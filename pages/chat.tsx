@@ -7,26 +7,25 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  DocumentData,
 } from "firebase/firestore";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { useRouter } from "next/router";
 
 export default function ChatPage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<DocumentData[]>([]);
 
-  // 🔐 Check user is logged in
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) setUser(currentUser);
       else router.push("/auth");
     });
     return () => unsubscribe();
-  }, []);
+  }, [router]);
 
-  // 🔁 Load messages in realtime
   useEffect(() => {
     const q = query(collection(db, "messages"), orderBy("createdAt"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -36,7 +35,7 @@ export default function ChatPage() {
   }, []);
 
   const sendMessage = async () => {
-    if (!message.trim()) return;
+    if (!message.trim() || !user) return;
     await addDoc(collection(db, "messages"), {
       text: message,
       uid: user.uid,
@@ -56,9 +55,25 @@ export default function ChatPage() {
       <h2>Welcome {user?.email}</h2>
       <button onClick={logout}>Logout</button>
 
-      <div style={{ height: "300px", overflowY: "scroll", border: "1px solid #ccc", marginTop: 20, padding: 10 }}>
+      <div
+        style={{
+          height: "300px",
+          overflowY: "scroll",
+          border: "1px solid #ccc",
+          marginTop: 20,
+          padding: 10,
+        }}
+      >
         {messages.map((msg) => (
-          <div key={msg.id} style={{ margin: "10px 0", background: msg.uid === user.uid ? "#dcf8c6" : "#f1f0f0", padding: 8, borderRadius: 5 }}>
+          <div
+            key={msg.id}
+            style={{
+              margin: "10px 0",
+              background: msg.uid === user?.uid ? "#dcf8c6" : "#f1f0f0",
+              padding: 8,
+              borderRadius: 5,
+            }}
+          >
             <strong>{msg.email}</strong>
             <p>{msg.text}</p>
           </div>
